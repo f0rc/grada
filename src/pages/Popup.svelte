@@ -24,9 +24,9 @@
     return filtered;
   })();
 
-  $: sortedKeys = Object.keys(filteredStorageItem).sort(
-    (a, b) => filteredStorageItem[b] - filteredStorageItem[a]
-  );
+  $: sortedKeys = Object.keys(filteredStorageItem).sort((a, b) => {
+    return filteredStorageItem[b] - filteredStorageItem[a];
+  });
 
   function formatDuration(duration: number): string {
     const seconds = Math.floor((duration / 1000) % 60);
@@ -34,21 +34,23 @@
     const hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
     const days = Math.floor(duration / (1000 * 60 * 60 * 24));
 
-    const daysDisplay =
-      days > 0 ? days + (days == 1 ? " day, " : " days, ") : "";
+    const daysDisplay = days > 0 ? days + (days == 1 ? " d, " : " d, ") : "";
     const hoursDisplay =
-      hours > 0 ? hours + (hours == 1 ? " hour, " : " hours, ") : "";
+      hours > 0 ? hours + (hours == 1 ? " h, " : " h, ") : "";
     const minutesDisplay =
-      minutes > 0 ? minutes + (minutes == 1 ? " minute, " : " minutes, ") : "";
+      minutes > 0 ? minutes + (minutes == 1 ? " m, " : " m, ") : "";
     const secondsDisplay =
-      seconds > 0 ? seconds + (seconds == 1 ? " second" : " seconds") : "";
+      seconds > 0 ? seconds + (seconds == 1 ? " s" : " s") : "";
 
-    return daysDisplay + hoursDisplay + minutesDisplay + secondsDisplay;
+    return (
+      daysDisplay + hoursDisplay + minutesDisplay + secondsDisplay ||
+      duration.toString() + "s"
+    );
   }
 
   function extractDomain(url: string): string {
     try {
-      return url.replace(/[0-9]+www./, "");
+      return url.replace(/^\d+(www\.)?/, "");
     } catch (e) {
       return url + "fail";
     }
@@ -56,14 +58,18 @@
 </script>
 
 <div
-  class="flex flex-col bg-neutral-700 text-zinc-300 min-h-[400px] min-w-[400px] items-center justify-center"
+  class="flex flex-col bg-neutral-700 text-zinc-300 min-h-[400px] min-w-[400px] p-12"
 >
+  <h1 class="font-semibold uppercase text-center">URL Timer</h1>
   {#each sortedKeys as item}
-    <div>
-      <h1>
+    <div
+      class="flex flex-row justify-between items-center hover:bg-neutral-600 rounded-md px-2 py-2"
+    >
+      <h1 class="text-center">
         {extractDomain(item)}
-        : {formatDuration(filteredStorageItem[item])}
       </h1>
+
+      <h1 class="text-center">{formatDuration(filteredStorageItem[item])}</h1>
     </div>
   {/each}
 </div>
