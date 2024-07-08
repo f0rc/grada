@@ -6,15 +6,38 @@ browser.runtime.onInstalled.addListener((details) => {
   console.log("Extension installed:", details);
 });
 
-const upsertStorageKey = async (url: string) => {
+browser.tabs.onActivated.addListener(async (activeInfo) => {
+  const url = (await browser.tabs.get(activeInfo.tabId)).url;
+
+  if (url) {
+    await updateTimer(url);
+  }
+});
+
+browser.tabs.onUpdated.addListener(async (_tabId, _changeInfo, tab) => {
+  const url = tab.url;
+  if (url) {
+    await updateTimer(url);
+  }
+});
+
+browser.windows.onRemoved.addListener(async (_windowId) => {
+  await endLastSession();
+});
+
+browser.runtime.onSuspend.addListener(async () => {
+  await endLastSession();
+});
+
+const upsertStorageKey = async (hostname: string) => {
   const date = new Date();
-  const hostname = new URL(url).host;
-  const key = date.getMonth() + date.getFullYear() + hostname;
+  console.log(date.getMonth(), date.getFullYear());
+  const key =
+    date.getMonth().toString() + date.getFullYear().toString() + hostname;
 
   let storageKey = await browser.storage.local.get(key);
 
   if (!storageKey[key]) {
-    console.log("no key");
     storageKey = { [key]: 0 };
     await browser.storage.local.set(storageKey);
   }
@@ -24,7 +47,6 @@ const upsertStorageKey = async (url: string) => {
 
 const logSessionDuration = async (url: string, startTime: number) => {
   const key = await upsertStorageKey(url);
-  console.log("logging session", url);
   const endTime = Date.now();
   const sessionDuration = endTime - startTime;
 
@@ -45,89 +67,40 @@ const startNewSession = async (url: string) => {
     currURL: url,
     sessionStartTime: Date.now(),
   });
-
-  console.log("Session started for url: ", url);
 };
 
-browser.tabs.onActivated.addListener(async (activeInfo) => {
-  // get url from tab
+async function updateTimer(rawURL: string) {
+  const url = new URL(rawURL).hostname;
 
-  const url = (await browser.tabs.get(activeInfo.tabId)).url;
   const store = await browser.storage.local.get([
     "currURL",
     "sessionStartTime",
   ]);
 
-  const currURL = store.currURL as string;
-  const sessionStartTime = store.sessionStartTime as number;
+  const currURL: string = store.currURL;
+  const sessionStartTime: number = store.sessionStartTime;
 
-  if (url) {
-    const hostname = new URL(url).host;
+  if (!currURL) {
+    startNewSession(url);
+  } else {
     if (url !== currURL) {
       // new url deactivate old url and start new session
-      console.log("activated new tab new curr url");
       await logSessionDuration(currURL, sessionStartTime);
-      startNewSession(hostname);
-    }
-
-    // current url is still undefined
-    if (!currURL) {
-      console.log("activated new tab no curr url");
-      startNewSession(hostname);
+      startNewSession(url);
     }
   }
-});
+}
 
-browser.tabs.onUpdated.addListener(async (_tabId, _changeInfo, tab) => {
-  const url = tab.url;
-
+async function endLastSession() {
   const store = await browser.storage.local.get([
     "currURL",
     "sessionStartTime",
   ]);
 
-  const currURL = store.currURL as string;
-  const sessionStartTime = store.sessionStartTime as number;
+  const currURL: string = store.currURL;
+  const sessionStartTime: number = store.sessionStartTime;
 
-  if (url) {
-    const hostname = new URL(url).host;
-    if (sessionStartTime && currURL && url !== currURL) {
-      // new url deactivate old url and start new session
-      await logSessionDuration(currURL, sessionStartTime);
-      console.log("updated", crypto.randomUUID());
-      startNewSession(hostname);
-    }
-
-    // current url is still undefined
-    if (!currURL) {
-      console.log("updated no curr url");
-      startNewSession(hostname);
-    }
-  }
-});
-
-browser.windows.onRemoved.addListener(async (_windowId) => {
-  const store = await browser.storage.local.get([
-    "currURL",
-    "sessionStartTime",
-  ]);
-
-  const currURL = store.currURL as string;
-  const sessionStartTime = store.sessionStartTime as number;
-  if (currURL && sessionStartTime) {
+  if (currURL) {
     await logSessionDuration(currURL, sessionStartTime);
   }
-});
-
-browser.runtime.onSuspend.addListener(async () => {
-  const store = await browser.storage.local.get([
-    "currURL",
-    "sessionStartTime",
-  ]);
-
-  const currURL = store.currURL as string;
-  const sessionStartTime = store.sessionStartTime as number;
-  if (currURL && sessionStartTime) {
-    await logSessionDuration(currURL, sessionStartTime);
-  }
-});
+}
