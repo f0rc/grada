@@ -1,3 +1,3 @@
-import browser from "webextension-polyfill";
+import Popup from './pages/Popup.svelte'
 
-console.log("Hello from the popup!", { id: browser.runtime.id });
+new Popup({ target: document.body });

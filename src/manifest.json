@@ -8,6 +8,7 @@
     "96": "icon/96.png",
     "128": "icon/128.png"
   },
+
   "permissions": ["tabs", "activeTab", "storage"],
   "{{chrome}}.action": {
     "default_popup": "src/popup.html"
@@ -18,10 +19,5 @@
   "background": {
     "{{chrome}}.service_worker": "src/background.ts",
     "{{firefox}}.scripts": ["src/background.ts"]
-  },
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "courtlistener.download@molly.white"
-    }
   }
 }
